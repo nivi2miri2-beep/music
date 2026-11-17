@@ -13,7 +13,6 @@ def home():
     return "Bot is online and running!"
 
 def run_web():
-    # Fly.io كيعطي متغير PORT أوتوماتيكياً، وإلا ما لقاهش كنستعملو 8080
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
@@ -41,7 +40,7 @@ async def on_ready():
     except Exception as e:
         print(f"Failed to connect to Lavalink: {e}")
 
-# أمر تشغيل الموسيقى
+# أمر تشغيل الموسيقى مع التجاوز التلقائي للصوت في الـ Stage Channel
 @bot.command(name='play')
 async def play(ctx: commands.Context, *, search: str):
     if not ctx.author.voice:
@@ -50,9 +49,15 @@ async def play(ctx: commands.Context, *, search: str):
     player = ctx.voice_client
     if not player:
         try:
-            player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+            channel = ctx.author.voice.channel
+            player = await channel.connect(cls=wavelink.Player)
+            
+            # إذا كانت القناة Stage Channel، خليه يتحول أوتوماتيكياً إلى متحدث (Speaker)
+            if channel.type == discord.ChannelType.stage_voice:
+                await ctx.guild.me.edit(suppress=False)
+                
         except Exception as e:
-            return await ctx.send(f"ما قدرتش ندخل لقناة الصوت: {e}")
+            return await ctx.send(f"ما قدرتش ندخل لقناة الصوت أو نولي متحدث: {e}")
 
     # البحث عن الأغنية
     tracks = await wavelink.Playable.search(search)
@@ -61,7 +66,7 @@ async def play(ctx: commands.Context, *, search: str):
 
     track = tracks[0]
     await player.play(track)
-    await ctx.send(f"🎶 خدامة دابا: **{track.title}**")
+    await ctx.send(f"🎶 خدامة دابا في الـ Stage: **{track.title}**")
 
 # أمر إيقاف البوت وخروجه من القناة
 @bot.command(name='stop')
@@ -81,4 +86,4 @@ if __name__ == "__main__":
         bot.run(TOKEN)
     else:
         print("Error: TOKEN environment variable not found!")
-            
+    
